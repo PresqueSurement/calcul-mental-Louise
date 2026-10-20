@@ -137,6 +137,7 @@ input#inp{border-color:hsl(var(--h) 55% var(--cb));font-size:26px;width:220px}in
 <header><b><span>Calcul mental · bases de 6<sup>e</sup></span></b><span id="profbadge" hidden>mode professeur</span><span id="syncst" hidden></span>
 <button data-nav="home">Accueil</button><button data-nav="progress">Ma progression</button><button data-nav="flags" hidden>Signalements</button></header>
 <main id="app"></main>
+<script src="config.js"></script>
 <script>
 /* ===== Générateurs de calculs ===== */
 const R = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
@@ -729,7 +730,7 @@ function pct(ok, n) { return n ? Math.round(100 * ok / n) : null; }
 let noSync = false, VIEW = 'home';
 const SY = { st: 'off', msg: '' };
 function syncCfg() {
-  const t = LS.get('token', ''); let o = LS.get('syOwner', ''), r = LS.get('syRepo', '');
+  const t = LS.get('token', '') || ((window.CM_CONFIG && window.CM_CONFIG.token) || ''); let o = LS.get('syOwner', ''), r = LS.get('syRepo', '');
   try { if ((!o || !r) && location.hostname.endsWith('.github.io')) { o = o || location.hostname.split('.')[0]; r = r || location.pathname.split('/')[1] || ''; } } catch (e) {}
   return { t, o, r };
 }
