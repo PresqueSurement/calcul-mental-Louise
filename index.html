@@ -786,6 +786,11 @@ async function syncNow() {
   } catch (e) { setSy('off', String(e && e.message || e)); }
   finally { syncing = false; if (syncAgain) { syncAgain = false; syncSoon(); } }
 }
+/* lien d'activation : …/#sync=JETON enregistre le jeton sur cet appareil (le fragment n'est jamais envoyé au serveur) */
+try {
+  const m = /^#sync=([A-Za-z0-9_\-]+)$/.exec(location.hash || '');
+  if (m) { LS.set('token', m[1]); history.replaceState(null, '', location.pathname + location.search); }
+} catch (e) {}
 window.addEventListener('online', syncSoon);
 document.addEventListener('visibilitychange', () => { if (!document.hidden && !(S && S.view === 'question')) syncSoon(); });
 function syncCard() {
@@ -798,7 +803,8 @@ function syncCard() {
       + '<div class="row"><button class="btn primary small" data-act="syncsave">Activer</button></div>';
   } else {
     h += '<p class="meta">État : <b>' + (SY.st === 'ok' ? 'synchronisé' : SY.st === 'busy' ? 'en cours…' : SY.st === 'auth' ? 'jeton refusé' : 'hors ligne') + '</b>' + (SY.msg ? ' · ' + esc(SY.msg) : '') + ' · dépôt <code>' + esc(c.o + '/' + c.r) + '</code></p>'
-      + '<div class="row"><button class="btn small" data-act="syncnow">Synchroniser maintenant</button><button class="btn small danger" data-act="syncoff">Oublier le jeton sur cet appareil</button></div>';
+      + '<div class="row"><button class="btn small" data-act="syncnow">Synchroniser maintenant</button><button class="btn small" data-act="synclink">Copier le lien d’activation</button><button class="btn small danger" data-act="syncoff">Oublier le jeton sur cet appareil</button></div>'
+      + '<p class="meta" id="synclinkmsg">Le lien d’activation configure un autre appareil en un clic (à envoyer seulement à l’élève : il contient le jeton).</p>';
   }
   return h + '</div>';
 }
@@ -1120,6 +1126,11 @@ document.addEventListener('click', e => {
   else if (a === 'resetyes') { LS.set('clearedAt', Date.now()); saveHistory([]); render('progress'); }
   else if (a === 'syncsave') { const t = ($('#syT') || {}).value || '', o = ($('#syO') || {}).value || '', r = ($('#syR') || {}).value || ''; if (t.trim() && o.trim() && r.trim()) { LS.set('token', t.trim()); LS.set('syOwner', o.trim()); LS.set('syRepo', r.trim()); setSy('busy'); render('progress'); syncNow(); } }
   else if (a === 'syncnow') syncNow();
+  else if (a === 'synclink') {
+    const link = location.origin + location.pathname + '#sync=' + syncCfg().t, m = $('#synclinkmsg');
+    const done = ok => { if (m) m.innerHTML = ok ? 'Lien copié. Ouvre-le sur l’autre appareil (il active la sauvegarde puis disparaît de la barre d’adresse).' : 'Copie impossible : <textarea class="rep" readonly rows="3">' + esc(link) + '</textarea>'; };
+    try { navigator.clipboard.writeText(link).then(() => done(true), () => done(false)); } catch (err) { done(false); }
+  }
   else if (a === 'syncoff') { LS.del('token'); setSy('off'); render('progress'); }
 });
 
