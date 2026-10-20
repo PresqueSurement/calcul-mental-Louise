@@ -734,7 +734,8 @@ function syncCfg() {
   try { if ((!o || !r) && location.hostname.endsWith('.github.io')) { o = o || location.hostname.split('.')[0]; r = r || location.pathname.split('/')[1] || ''; } } catch (e) {}
   return { t, o, r };
 }
-const syncOn = () => { const c = syncCfg(); return !!(c.t && c.o && c.r); };
+const RELAY = () => (window.CM_CONFIG && window.CM_CONFIG.relay) || '';
+const syncOn = () => { if (RELAY()) return true; const c = syncCfg(); return !!(c.t && c.o && c.r); };
 const b64enc = s => btoa(unescape(encodeURIComponent(s)));
 const b64dec = s => decodeURIComponent(escape(atob(s.replace(/\s/g, ''))));
 function setSy(st, msg) {
@@ -746,6 +747,11 @@ function setSy(st, msg) {
   el.title = msg || '';
 }
 async function ghFetch(method, body) {
+  if (RELAY()) {   /* mode relais : un script Google détient le jeton, la page n'en a pas */
+    const res = await fetch(RELAY(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ method, body: body || null }), redirect: 'follow' });
+    const j = await res.json();
+    return { status: j.status, json: async () => j.data };
+  }
   const c = syncCfg();
   return fetch('https://api.github.com/repos/' + encodeURIComponent(c.o) + '/' + encodeURIComponent(c.r) + '/contents/progress.json' + (method === 'GET' ? '?t=' + Date.now() : ''), {
     method, cache: 'no-store',
@@ -797,7 +803,10 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && !(
 function syncCard() {
   const c = syncCfg(), on = syncOn();
   let h = '<div class="card big syncbox"><h3>Sauvegarde en ligne <small>(mode professeur)</small></h3>';
-  if (!on) {
+  if (RELAY()) {
+    h += '<p class="meta">Sauvegarde automatique active (relais Google) : rien à saisir sur cet appareil. État : <b>' + (SY.st === 'ok' ? 'synchronisé' : SY.st === 'busy' ? 'en cours…' : SY.st === 'auth' ? 'jeton du relais refusé' : 'hors ligne') + '</b>' + (SY.msg ? ' · ' + esc(SY.msg) : '') + '</p>'
+      + '<div class="row"><button class="btn small" data-act="syncnow">Synchroniser maintenant</button></div>';
+  } else if (!on) {
     h += '<p class="meta">La progression de cet appareil est enregistrée dans le fichier <code>progress.json</code> du dépôt GitHub du site. Le jeton est mémorisé uniquement dans ce navigateur.</p>'
       + '<label class="fl">Dépôt (propriétaire / nom)</label><div class="row2"><input id="syO" value="' + esc(c.o) + '" placeholder="propriétaire"> / <input id="syR" value="' + esc(c.r) + '" placeholder="nom du dépôt"></div>'
       + '<label class="fl">Jeton d’accès GitHub (droit « Contents : lecture et écriture » sur ce dépôt)</label><input id="syT" type="password" autocomplete="off" placeholder="github_pat_…">'
