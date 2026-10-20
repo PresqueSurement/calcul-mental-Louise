@@ -807,6 +807,11 @@ function syncCard() {
       + '<div class="row"><button class="btn small" data-act="syncnow">Synchroniser maintenant</button><button class="btn small" data-act="synclink">Copier le lien d’activation</button><button class="btn small danger" data-act="syncoff">Oublier le jeton sur cet appareil</button></div>'
       + '<p class="meta" id="synclinkmsg">Le lien d’activation configure un autre appareil en un clic (à envoyer seulement à l’élève : il contient le jeton).</p>';
   }
+  h += '<details class="meta"><summary>Transférer l’historique d’un autre navigateur</summary>'
+    + '<p class="meta">Sur le navigateur où l’élève s’est entraînée : clique sur « Copier l’historique ». Ici : colle-le dans la zone puis clique sur « Importer » (les séries déjà présentes ne sont pas dupliquées).</p>'
+    + '<div class="row"><button class="btn small" data-act="histcopy">Copier l’historique de ce navigateur</button></div>'
+    + '<textarea id="histbox" class="rep" rows="3" placeholder="Colle ici l’historique copié"></textarea>'
+    + '<div class="row"><button class="btn small primary" data-act="histimp">Importer</button></div><p class="meta" id="histmsg"></p></details>';
   return h + '</div>';
 }
 
@@ -1131,6 +1136,19 @@ document.addEventListener('click', e => {
     const link = location.origin + location.pathname + '#sync=' + syncCfg().t, m = $('#synclinkmsg');
     const done = ok => { if (m) m.innerHTML = ok ? 'Lien copié. Ouvre-le sur l’autre appareil (il active la sauvegarde puis disparaît de la barre d’adresse).' : 'Copie impossible : <textarea class="rep" readonly rows="3">' + esc(link) + '</textarea>'; };
     try { navigator.clipboard.writeText(link).then(() => done(true), () => done(false)); } catch (err) { done(false); }
+  }
+  else if (a === 'histcopy') {
+    const txt = JSON.stringify(getHistory()), m = $('#histmsg');
+    const ok = () => { if (m) m.textContent = getHistory().length + ' série(s) copiée(s).'; };
+    try { navigator.clipboard.writeText(txt).then(ok, () => { if (m) m.innerHTML = 'Copie impossible : <textarea class="rep" readonly rows="3">' + esc(txt) + '</textarea>'; }); } catch (err) {}
+  }
+  else if (a === 'histimp') {
+    const m = $('#histmsg'); let arr;
+    try { arr = JSON.parse($('#histbox').value); if (!Array.isArray(arr)) throw 0; } catch (err) { if (m) m.textContent = 'Contenu non reconnu.'; return; }
+    const seen = new Set(getHistory().map(e => e.t)); let n = 0; const all = getHistory().slice();
+    for (const e of arr) if (e && typeof e.t === 'number' && e.per && typeof e.per === 'object' && !seen.has(e.t)) { all.push(e); seen.add(e.t); n++; }
+    all.sort((x, y) => x.t - y.t); saveHistory(all); render('progress');
+    const m2 = $('#histmsg'); if (m2) m2.textContent = n + ' série(s) importée(s).';
   }
   else if (a === 'syncoff') { LS.del('token'); setSy('off'); render('progress'); }
 });
