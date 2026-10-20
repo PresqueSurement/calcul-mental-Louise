@@ -741,7 +741,7 @@ const b64dec = s => decodeURIComponent(escape(atob(s.replace(/\s/g, ''))));
 function setSy(st, msg) {
   SY.st = st; SY.msg = msg || '';
   const el = $('#syncst'); if (!el) return;
-  if (!syncOn()) { el.hidden = true; return; }
+  if (!syncOn() || !PROF) { el.hidden = true; return; }
   el.hidden = false; el.className = st;
   el.textContent = st === 'ok' ? 'En ligne ✓' : st === 'busy' ? 'Synchronisation…' : st === 'auth' ? 'Jeton refusé' : 'Hors ligne';
   el.title = msg || '';
@@ -1135,7 +1135,7 @@ document.addEventListener('click', e => {
     const done = ok => { const m = $('#copymsg'); if (m) m.textContent = ok ? 'Rapport copié : colle-le dans la conversation.' : 'Copie impossible : sélectionne et copie le texte ci-dessous.'; if (!ok && m) m.insertAdjacentHTML('afterend', '<textarea class="rep" readonly rows="8">' + esc(txt) + '</textarea>'); };
     try { navigator.clipboard.writeText(txt).then(() => done(true), () => done(false)); } catch (err) { done(false); }
   }
-  else if (a === 'profoff') { PROF = false; LS.del('prof'); render('home'); }
+  else if (a === 'profoff') { PROF = false; LS.del('prof'); setSy(SY.st, SY.msg); render('home'); }
   else if (a === 'resetask') $('#resetbox').innerHTML = ' Sûr(e) ? <button class="btn small danger" data-act="resetyes">Oui, tout effacer</button> <button class="link" data-act="resetno">Non</button>';
   else if (a === 'resetno') $('#resetbox').innerHTML = '';
   else if (a === 'resetyes') { LS.set('clearedAt', Date.now()); saveHistory([]); render('progress'); }
