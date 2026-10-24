@@ -698,17 +698,25 @@ function ansText(q) {
 /* ---- chronomètre (option) ---- */
 const TM = Object.assign({ on: false, sec: 8 }, LS.get('timer', {}));
 const saveTM = () => LS.set('timer', TM);
-let tmr = null;
-function stopTimer() { if (tmr) { clearInterval(tmr); tmr = null; } }
+let tmr = null, t0 = 0;
+/* temps non utilisé à une question : reporté sur la suivante (S.carry) */
+function qBudget() {
+  if (S.leftIdx !== S.i) { S.carry = S.carry || 0; S.base = S.carry; S.tot = TM.sec * 1000 + S.carry; S.left = S.tot; S.leftIdx = S.i; S.carry = 0; }
+}
+const curLeft = () => Math.max(0, S.left - (tmr ? Date.now() - t0 : 0));
+const tmTxt = ms => Math.max(0, Math.ceil(ms / 1000)) + ' s';
+const carryTxt = () => (S.base >= 500 ? ' · +' + Math.round(S.base / 1000) + ' s reportés' : '');
+function stopTimer() { if (tmr) { S.left = curLeft(); clearInterval(tmr); tmr = null; } }
 function startTimer() {
   stopTimer();
   if (!TM.on || !S || S.view !== 'question' || S.done) return;
-  const t0 = Date.now(), total = TM.sec * 1000, idx = S.i;
+  qBudget();
+  t0 = Date.now(); const idx = S.i;
   tmr = setInterval(() => {
     if (!S || S.i !== idx || S.view !== 'question') { stopTimer(); return; }
-    const left = total - (Date.now() - t0), f = $('#tfill'), tx = $('#ttxt');
-    if (f) f.style.width = Math.max(0, 100 * left / total) + '%';
-    if (tx) tx.textContent = Math.max(0, Math.ceil(left / 1000)) + ' s';
+    const left = S.left - (Date.now() - t0), f = $('#tfill'), tx = $('#ttxt');
+    if (f) f.style.width = Math.min(100, Math.max(0, 100 * left / S.tot)) + '%';
+    if (tx) tx.textContent = tmTxt(left) + carryTxt();
     if (left <= 0) { stopTimer(); timeUp(); }
   }, 100);
 }
@@ -850,7 +858,7 @@ function totals(catId, from, to) {
 function renderHome() {
   const st = catStats();
   const secs = [5, 6, 7, 8, 9, 10, 12, 15, 20, 30];
-  const tmHtml = '<div class="tmopt"><label class="sw"><input type="checkbox" id="tmOn"' + (TM.on ? ' checked' : '') + '><span class="knob"></span> Chronométrer</label> <label class="tmsec">temps par question : <select id="tmSec"' + (TM.on ? '' : ' disabled') + '>' + secs.map(v => '<option value="' + v + '"' + (v === TM.sec ? ' selected' : '') + '>' + v + ' secondes</option>').join('') + '</select></label></div>';
+  const tmHtml = '<div class="tmopt"><label class="sw"><input type="checkbox" id="tmOn"' + (TM.on ? ' checked' : '') + '><span class="knob"></span> Chronométrer</label> <label class="tmsec">temps par question : <select id="tmSec"' + (TM.on ? '' : ' disabled') + '>' + secs.map(v => '<option value="' + v + '"' + (v === TM.sec ? ' selected' : '') + '>' + v + ' secondes</option>').join('') + '</select></label><span class="hint">Le temps non utilisé est reporté sur la question suivante.</span></div>';
   let h = '<section class="hero big"><div class="deco" aria-hidden="true"><i>+</i><i>−</i><i>×</i><i>÷</i><i>=</i><i>%</i></div><h1>Calcul mental</h1><p>Dix questions à la fois, avec les calculs de 6<sup>e</sup> qu’il faut avoir bien en tête pour réussir en 5<sup>e</sup>. Les nombres changent à chaque série : tu peux en refaire autant que tu veux.</p>'
     + tmHtml + '<div class="row"><button class="btn primary" data-act="start" data-mode="mix">Série mélangée</button>'
     + '<button class="btn glass" data-act="start" data-mode="weak">Travailler mes points faibles</button>'
@@ -870,7 +878,7 @@ function renderQuestion() {
   const cs = cst(q.cat);
   let h = '<div class="qwrap cc" style="--h:' + cs.h + '"><div class="qhead"><span class="qn">Question <b>' + (S.i + 1) + '</b> sur ' + S.qs.length + '</span><span class="tag"><span class="ico sm">' + cs.ic + '</span>' + esc(catById(q.cat).nom) + '</span></div>'
     + '<div class="bar" aria-hidden="true"><i style="width:' + (100 * S.i / S.qs.length) + '%"></i></div>'
-    + (TM.on ? '<div class="tline"><div class="tbar" aria-hidden="true"><i id="tfill"></i></div><span id="ttxt">' + TM.sec + ' s</span></div>' : '')
+    + (TM.on ? '<div class="tline"><div class="tbar" aria-hidden="true"><i id="tfill"></i></div><span id="ttxt">' + (qBudget(), tmTxt(S.left) + carryTxt()) + '</span></div>' : '')
     + '<div class="qtext" id="qtext">' + q.q + '</div>';
   if (!S.done) {
     if (q.kind === 'choice' || q.kind === 'vf') {
@@ -1062,6 +1070,7 @@ function answer(input) {
   const q = S.qs[S.i];
   if (q.kind === 'vf') input = !!input;
   const ok = correct(q, input);
+  if (TM.on) S.carry = curLeft();
   S.res[S.i] = { ok, given: (q.kind === 'choice') ? q.choices[input] : (q.kind === 'vf' ? (input ? 'Vrai' : 'Faux') : String(input).trim()) };
   advance();
 }
