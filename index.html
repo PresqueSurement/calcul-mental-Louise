@@ -699,6 +699,7 @@ function ansText(q) {
 const TM = Object.assign({ on: false, sec: 8 }, LS.get('timer', {}));
 const saveTM = () => LS.set('timer', TM);
 let tmr = null, t0 = 0;
+const CARRY_MAX = 10000;
 /* temps non utilisé à une question : reporté sur la suivante (S.carry) */
 function qBudget() {
   if (S.leftIdx !== S.i) { S.carry = S.carry || 0; S.base = S.carry; S.tot = TM.sec * 1000 + S.carry; S.left = S.tot; S.leftIdx = S.i; S.carry = 0; }
@@ -858,7 +859,7 @@ function totals(catId, from, to) {
 function renderHome() {
   const st = catStats();
   const secs = [5, 6, 7, 8, 9, 10, 12, 15, 20, 30];
-  const tmHtml = '<div class="tmopt"><label class="sw"><input type="checkbox" id="tmOn"' + (TM.on ? ' checked' : '') + '><span class="knob"></span> Chronométrer</label> <label class="tmsec">temps par question : <select id="tmSec"' + (TM.on ? '' : ' disabled') + '>' + secs.map(v => '<option value="' + v + '"' + (v === TM.sec ? ' selected' : '') + '>' + v + ' secondes</option>').join('') + '</select></label><span class="hint">Le temps non utilisé est reporté sur la question suivante.</span></div>';
+  const tmHtml = '<div class="tmopt"><label class="sw"><input type="checkbox" id="tmOn"' + (TM.on ? ' checked' : '') + '><span class="knob"></span> Chronométrer</label> <label class="tmsec">temps par question : <select id="tmSec"' + (TM.on ? '' : ' disabled') + '>' + secs.map(v => '<option value="' + v + '"' + (v === TM.sec ? ' selected' : '') + '>' + v + ' secondes</option>').join('') + '</select></label><span class="hint">Le temps non utilisé est reporté sur la question suivante (10 s au maximum).</span></div>';
   let h = '<section class="hero big"><div class="deco" aria-hidden="true"><i>+</i><i>−</i><i>×</i><i>÷</i><i>=</i><i>%</i></div><h1>Calcul mental</h1><p>Dix questions à la fois, avec les calculs de 6<sup>e</sup> qu’il faut avoir bien en tête pour réussir en 5<sup>e</sup>. Les nombres changent à chaque série : tu peux en refaire autant que tu veux.</p>'
     + tmHtml + '<div class="row"><button class="btn primary" data-act="start" data-mode="mix">Série mélangée</button>'
     + '<button class="btn glass" data-act="start" data-mode="weak">Travailler mes points faibles</button>'
@@ -1070,7 +1071,7 @@ function answer(input) {
   const q = S.qs[S.i];
   if (q.kind === 'vf') input = !!input;
   const ok = correct(q, input);
-  if (TM.on) S.carry = curLeft();
+  if (TM.on) S.carry = Math.min(curLeft(), CARRY_MAX);   /* report plafonné à +10 s */
   S.res[S.i] = { ok, given: (q.kind === 'choice') ? q.choices[input] : (q.kind === 'vf' ? (input ? 'Vrai' : 'Faux') : String(input).trim()) };
   advance();
 }
