@@ -435,12 +435,6 @@ const T_FRAC = [
     return { q: 'Quel est ' + mot + ' de ' + n + ' ?', kind: 'num', ans: k, expr: n + '/' + d,
       sol: 'Prendre ' + mot + ', c’est diviser par ' + d + ' : ' + n + ' ÷ ' + d + ' = ' + k + '.' };
   } },
-  { id: 'frac.doubletriple', nom: 'Le double, le triple', gen() {
-    const [mot, m] = pick([['le double', 2], ['le triple', 3]]);
-    const x = pick([R(12, 49), R(11, 99) / 100, R(11, 49) / 10]);
-    return { q: 'Quel est ' + mot + ' de ' + N(x) + ' ?', kind: 'num', ans: Math.round(x * m * 1e6) / 1e6, expr: x + '*' + m,
-      sol: 'On multiplie par ' + m + ' : ' + N(x) + ' × ' + m + ' = ' + N(x * m) + '.' };
-  } },
   { id: 'frac.pourcent', nom: 'Pourcentage simple', gen() {
     const [p, base, f] = pick([[50, 'moitié', 2], [25, 'quart', 4], [10, 'dixième', 10], [20, 'cinquième', 5], [75, '3 quarts', 4], [30, '3 dixièmes', 10]]);
     const unit = pick(['€', 'élèves', 'billes']);
@@ -455,10 +449,67 @@ const T_FRAC = [
     const q = Math.random() < 0.5 ? 'Calculer ' + p + ' % de ' + N(n) + unite + '.' : 'Compléter : ' + p + ' % de ' + N(n) + unite + ' = ' + blank + unite;
     return { q, kind: 'num', ans, expr: n + '*' + p + '/100', unit: unit === '€' ? '€' : unit, sol };
   } },
-  { id: 'frac.decimale', nom: 'Fraction usuelle en écriture décimale', gen() {
-    const [n, d, v] = pick([[1, 2, 0.5], [1, 4, 0.25], [3, 4, 0.75], [1, 5, 0.2], [2, 5, 0.4], [3, 5, 0.6], [1, 10, 0.1], [3, 10, 0.3], [4, 5, 0.8]]);
-    return { q: 'Quelle est l’écriture décimale de ' + fr(n, d) + ' ?', kind: 'num', ans: v, expr: n + '/' + d,
-      sol: fr(n, d) + ' = ' + n + ' ÷ ' + d + ' = ' + N(v) + '.' };
+  { id: 'frac.decimale', nom: 'Écriture décimale d’une fraction ou d’un pourcentage', gen() {
+    let q, v, sol, oblig, autres;
+    if (Math.random() < 0.5) {
+      const [n, d] = pick([[1, 2], [1, 4], [3, 4], [1, 5], [2, 5], [3, 5], [4, 5], [1, 10], [3, 10]]);
+      v = n / d;
+      q = 'Quelle est l’écriture décimale de ' + fr(n, d) + ' ?';
+      sol = fr(n, d) + ' = ' + n + ' ÷ ' + d + ' = ' + N(v) + '.';
+      /* erreur classique, toujours proposée : n/d lu « n virgule d » (4/5 → 4,5) */
+      oblig = n + ',' + d;
+      autres = [v * 10, v / 10, 1 - v];
+    } else {
+      const p = pick([10, 20, 25, 50, 75]);
+      v = p / 100;
+      q = 'Quelle est l’écriture décimale de ' + p + ' % ?';
+      sol = p + ' % = ' + fr(p, 100) + ' = ' + N(v) + '.';
+      /* erreur classique : 25 % → 2,5 (ou 25), toujours proposée */
+      oblig = N(p / 10);
+      autres = [p, v / 10, 1 - v];
+    }
+    if (Math.random() < 0.5) {
+      return { q, kind: 'num', ans: v, sol };
+    }
+    const bonne = N(v);
+    const pool = [];
+    for (const x of autres) { const t = N(Math.round(x * 1e6) / 1e6); if (x > 0 && t !== bonne && t !== oblig && pool.indexOf(t) < 0) pool.push(t); }
+    const ch = shuffle([bonne, oblig].concat(shuffle(pool).slice(0, 2)));
+    return { q, kind: 'choice', choices: ch, ans: ch.indexOf(bonne), sol };
+  } },
+  { id: 'frac.retour', nom: 'Passer de l’écriture décimale à la fraction ou au pourcentage', gen() {
+    const DEC = [[0.1, 1, 10], [0.2, 1, 5], [0.25, 1, 4], [0.3, 3, 10], [0.4, 2, 5], [0.5, 1, 2], [0.6, 3, 5], [0.75, 3, 4], [0.8, 4, 5]];
+    const egal = (a, b) => { const [n1, d1] = a.split('/').map(Number), [n2, d2] = b.split('/').map(Number); return n1 * d2 === n2 * d1; };
+    const t = Math.random();
+    if (t < 0.34) {
+      /* décimal → fraction (QCM) : « 0,25 est égal à quelle fraction ? » */
+      const [v, n, d] = pick(DEC), bonne = n + '/' + d;
+      const dig = String(v).split('.')[1];
+      const sens = [Math.round(v * 100) > 0 ? '1/' + Math.round(v * 100) : null, dig + '/10', dig + '/100'.replace('100', '1000')];
+      const usuelles = shuffle(['1/2', '1/4', '3/4', '1/5', '2/5', '3/5', '4/5', '1/10', '3/10', '1/3', '2/3']);
+      const pool = [];
+      for (const c of sens.concat(usuelles)) if (c && !egal(c, bonne) && !pool.some(x => egal(x, c))) pool.push(c);
+      const ch = shuffle([bonne].concat(pool.slice(0, 3)));
+      const den = Number.isInteger(v * 10 + 1e-9) && Math.abs(v * 10 - Math.round(v * 10)) < 1e-9 ? 10 : 100;
+      return { q: 'Quelle fraction est égale à ' + N(v) + ' ?', kind: 'choice', choices: ch, ans: ch.indexOf(bonne),
+        sol: N(v) + ' = ' + Math.round(v * den) + '/' + den + ' = ' + n + '/' + d + '.' };
+    }
+    if (t < 0.67) {
+      /* décimal → pourcentage : « 0,25 = … % » */
+      const v = pick([0.1, 0.2, 0.25, 0.5, 0.75]), p = Math.round(v * 100);
+      const sol = N(v) + ' = ' + fr(p, 100) + ' = ' + p + ' %.';
+      if (Math.random() < 0.5) return { q: 'Compléter : ' + N(v) + ' = ' + blank + ' %', kind: 'num', ans: p, unit: '%', sol };
+      const faux = [p / 10, p * 10, v, 100 - p].map(x => N(Math.round(x * 1e6) / 1e6) + ' %').filter((x, k, a) => x !== p + ' %' && a.indexOf(x) === k);
+      const ch = shuffle([p + ' %'].concat(shuffle(faux).slice(0, 3)));
+      return { q: N(v) + ' est égal à quel pourcentage ?', kind: 'choice', choices: ch, ans: ch.indexOf(p + ' %'), sol };
+    }
+    /* fraction → pourcentage : « 3/4 = … % » */
+    const [n, d] = pick([[1, 2], [1, 4], [3, 4], [1, 5], [2, 5], [3, 5], [4, 5], [1, 10], [3, 10]]), p = Math.round(100 * n / d);
+    const sol = fr(n, d) + ' = ' + n + ' ÷ ' + d + ' = ' + N(n / d) + ' = ' + p + ' %.';
+    if (Math.random() < 0.5) return { q: 'Compléter : ' + fr(n, d) + ' = ' + blank + ' %', kind: 'num', ans: p, unit: '%', sol };
+    const faux = [p / 10, Number(n + '.' + d), 100 - p, n / d].map(x => N(Math.round(x * 1e6) / 1e6) + ' %').filter((x, k, a) => x !== p + ' %' && a.indexOf(x) === k);
+    const ch = shuffle([p + ' %'].concat(shuffle(faux).slice(0, 3)));
+    return { q: 'À quel pourcentage est égale la fraction ' + fr(n, d) + ' ?', kind: 'choice', choices: ch, ans: ch.indexOf(p + ' %'), sol };
   } },
   { id: 'frac.quantite', nom: 'Fraction d’une quantité', gen() {
     const [a, b] = pick([[2, 3], [3, 4], [2, 5], [3, 5], [3, 10], [7, 10], [4, 5]]);
@@ -1199,7 +1250,7 @@ document.addEventListener('keydown', e => {
   // Entrée sur « question suivante » est géré par le bouton ; ici : raccourcis pour Vrai/Faux
   if (!S || S.view !== 'question' || S.done) return;
   const q = S.qs[S.i];
-  if (q.kind === 'vf' || q.kind === 'choice') { if (e.key === '1' || e.key === '2') { const btn = document.querySelectorAll('.choice')[parseInt(e.key, 10) - 1]; if (btn) btn.click(); } }
+  if (q.kind === 'vf' || q.kind === 'choice') { if (/^[1-4]$/.test(e.key)) { const btn = document.querySelectorAll('.choice')[parseInt(e.key, 10) - 1]; if (btn) btn.click(); } }
 });
 
 window.CM = { groupPts, totals, weekStart, dayStart, CATS, genSeries, correct, parseNum, fmt, getHistory, saveHistory, getFlags, saveFlags, syncNow, startSeries, answer, get S() { return S; } };
