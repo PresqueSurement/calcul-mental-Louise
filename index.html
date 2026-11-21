@@ -249,16 +249,8 @@ const T_ADDSUB = [
 
 /* ---------- 3. Astuces de multiplication ---------- */
 const T_ASTUCES = [
-  { id: 'astuces.x25', nom: 'Multiplier par 25', gen() {
-    const m = pick([8, 12, 16, 20, 24, 32, 36, 40, 44]), a = Math.random() < 0.5;
-    return calc(a ? '25*' + m : m + '*25', '25 × 4 = 100. Dans ' + m + ' il y a ' + m / 4 + ' fois 4, donc 25 × ' + m + ' = ' + m / 4 + ' × 100 = ' + m / 4 * 100 + '.');
-  } },
-  { id: 'astuces.x125', nom: 'Multiplier par 125', gen() {
-    const m = pick([8, 16, 24, 32, 40, 48]);
-    return calc('125*' + m, '125 × 8 = 1' + NB + '000. Dans ' + m + ' il y a ' + m / 8 + ' fois 8, donc 125 × ' + m + ' = ' + m / 8 + ' × 1' + NB + '000 = ' + N(m / 8 * 1000) + '.');
-  } },
   { id: 'astuces.produit3', nom: 'Produit de trois nombres', gen() {
-    const [p, q] = pick([[4, 25], [2, 50], [5, 20], [8, 125], [4, 250]]), f = R(3, 9);
+    const [p, q] = pick([[4, 25], [2, 50], [5, 20]]), f = R(3, 9);
     const l = shuffle([p, q, f]);
     return calc(l.join('*'), 'On commence par ' + p + ' × ' + q + ' = ' + p * q + ', puis ' + p * q + ' × ' + f + ' = ' + N(p * q * f) + '.');
   } },
@@ -283,9 +275,7 @@ const T_ASTUCES = [
     return calc(n + '*5', 'Multiplier par 5, c’est prendre la moitié puis multiplier par 10 : ' + n + ' ÷ 2 = ' + n / 2 + ', puis ' + n / 2 + ' × 10 = ' + n * 5 + '.');
   } },
   { id: 'astuces.distrib', nom: 'Factoriser pour calculer', gen() {
-    let a, b, c;
-    if (Math.random() < 0.5) { a = pick([13, 17, 19, 23, 35, 45]); b = R(2, 8); c = 10 - b; }
-    else { a = pick([12, 15, 25, 35]); b = pick([45, 35, 72, 65, 38, 55]); c = 100 - b; }
+    const a = pick([12, 13, 15, 17, 19, 23, 25]), b = R(2, 8), c = 10 - b;
     const e = a + '*' + b + '+' + a + '*' + c;
     return calc(e, 'Le nombre ' + a + ' est en facteur : ' + a + ' × ' + b + ' + ' + a + ' × ' + c + ' = ' + a + ' × (' + b + ' + ' + c + ') = ' + a + ' × ' + (b + c) + ' = ' + a * (b + c) + '.');
   } },
@@ -590,7 +580,7 @@ const T_UNIT = [
 const CATS = [
   { id: 'tables', nom: 'Tables et divisions', ex: '7 × 8 · 63 ÷ 7', tpl: T_TABLES },
   { id: 'addsub', nom: 'Additions et soustractions', ex: '46 + 18 · 425 − 29', tpl: T_ADDSUB },
-  { id: 'astuces', nom: 'Astuces de multiplication', ex: '25 × 12 · 7 × 99', tpl: T_ASTUCES },
+  { id: 'astuces', nom: 'Astuces de multiplication', ex: '4 × 7 × 25 · 7 × 99', tpl: T_ASTUCES },
   { id: 'prio', nom: 'Priorités opératoires', ex: '6 + 9 × 4 · (6 + 3) × 9', tpl: T_PRIO },
   { id: 'x10', nom: '× et ÷ par 10, 100, 1 000', ex: '14,2 × 100 · 12 ÷ 100', tpl: T_X10 },
   { id: 'dec', nom: 'Nombres décimaux', ex: '3,12 + 0,3 · 0,6 × 0,7', tpl: T_DEC },
